@@ -3,7 +3,7 @@ Yet Another Game Engine
 
 This game engine is slightly based off of `javax.swing` API's, in the sense that there are event/listener models
 
-for example, 
+for example,
 
 one could write:
 ```rust
@@ -37,19 +37,19 @@ struct PlayerComponent {
   player_mesh: Mesh2D,
 }
 
-impl AsyncComponent<GameState> for PlayerComponent {
-  type Error = ();
-  
+impl AsyncComponent for PlayerComponent {
+    type State = GameState;
 
-  fn poll_draw(self: Pin<&mut Self>, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<Result<(), ()>> {
-      self.weapon.poll_draw(cx, render_context)?;
-      self.player_mesh.poll_draw(cx, render_context)?;
+
+  fn poll_draw(self: Pin<&mut Self>, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<crate::Result<()>> {
+      self.weapon.poll_draw(cx)?;
+      self.player_mesh.poll_draw(cx)?;
       Ok(())
   }
 }
 
-impl AsyncDynamicComponent<GameState> for PlayerComponent {
-  fn poll_update(self: Pin<&mut Self, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<Result<(), ()>> {
+impl AsyncDynamicComponent for PlayerComponent {
+  fn poll_update(self: Pin<&mut Self, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<crate::Result<()>> {
     // update logic here, read stream for networking updates, etc
     let mut stream = render_context.state().game_stream;
     let mut buf = SmallVec::with_capacity(core::mem::size_of<usize>());
@@ -59,7 +59,7 @@ impl AsyncDynamicComponent<GameState> for PlayerComponent {
       Err(e) => return Err(())
     }
     // other logic, etc...
-  }   
+  }
 }
 
 
@@ -86,6 +86,5 @@ fn main() {
 
   engine.run().unwrap()
 }
- 
-```
 
+```

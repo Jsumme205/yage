@@ -8,7 +8,7 @@ flume = "*"
 
 
 [dependencies]
-yage_task = { path = "/home/jack/Documents/yage/yage_task" }
+yage_task = { path = "../yage_task" }
 concurrent_queue = { path = "/home/jack/Documents/yage/concurrent_queue" }
 slab = { version = "0.4.9", default-features = false }
 yage_net = { path = "/home/jack/Documents/yage/yage_net" }

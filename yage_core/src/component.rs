@@ -9,8 +9,12 @@ use yage_util::list::LinkedList;
 use crate::Dimensions;
 
 mod __glue;
+#[doc(hidden)]
+pub mod __private;
 pub(crate) mod component_handle;
 pub mod stateless;
+
+/// TODO: add extra extension methods
 pub mod sync;
 
 pub struct RenderContext<S> {
@@ -38,7 +42,17 @@ pub trait Component: BaseComponent {
     ) -> Poll<crate::Result<()>>;
 }
 
-pub trait DynamicComponent: Component {
+pub trait DynamicComponent: BaseComponent {
+    type State;
+
+    fn draw(&mut self, ctx: &mut RenderContext<Self::State>) -> crate::Result<()>;
+
+    fn poll_derender(
+        self: Pin<&mut Self>,
+        ctx: &mut RenderContext<Self::State>,
+        cx: &mut Context<'_>,
+    ) -> Poll<crate::Result<()>>;
+
     fn redraw(&mut self, ctx: &mut RenderContext<Self::State>) -> crate::Result<()>;
 }
 

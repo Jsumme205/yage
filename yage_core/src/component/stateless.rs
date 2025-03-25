@@ -12,6 +12,11 @@ pub trait Stateless: BaseComponent {
     fn poll_derender(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<crate::Result<()>>;
 }
 
-pub trait StatelessDyn: Stateless {
+pub trait StatelessDyn: BaseComponent {
+    fn draw(&mut self) -> crate::Result<()>;
+
+    /// This function should only return Poll::Ready() when it (the component) can be dropped
+    fn poll_derender(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<crate::Result<()>>;
+
     fn update(&mut self) -> crate::Result<()>;
 }

@@ -1,7 +1,13 @@
-use yage_executor::{Executor, NotThreadSafe};
-use yage_util::list::LinkedList;
+use core::{pin::Pin, task::Context};
 
-use crate::component::{component_handle::ComponentHandle, sync::AsyncComponent};
+use yage_executor::{Executor, NotThreadSafe};
+use yage_util::{atomic::AtomicMut, list::LinkedList};
+
+use crate::component::{
+    component_handle::ComponentHandle,
+    sync::{AsyncComponent, AsyncRenderContext},
+    RenderContext,
+};
 
 type AsyncComponentHandle<S> = ComponentHandle<S, dyn AsyncComponent<State = S>>;
 
@@ -23,5 +29,13 @@ impl<S> Async<S> {
             executor: Executor::new_unsync(),
             components: LinkedList::new(),
         }
+    }
+
+    pub(crate) async fn poll(
+        &mut self,
+        ctx: &mut RenderContext<S>,
+        cx: &mut Context<'_>,
+    ) -> crate::Result<()> {
+        todo!()
     }
 }

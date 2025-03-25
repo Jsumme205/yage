@@ -13,8 +13,8 @@ use core::{
     sync::atomic::{AtomicPtr, AtomicUsize},
     task::Waker,
 };
-use simeng_task::{builder::Builder, runnable::Task};
 use slab::Slab;
+use yage_task::{builder::Builder, task::Task};
 
 /// TODO: when stablized, change this back to private
 pub mod handle;
@@ -91,10 +91,4 @@ impl Executor<NotThreadSafe> {
     }
 }
 
-pub struct TaskHandle<T>(handle::TaskHandle<'static, T, usize>);
-
-impl<T> TaskHandle<T> {
-    pub fn join(self) -> Option<T> {
-        self.0.join()
-    }
-}
+//pub struct TaskHandle<T>(handle::TaskHandle<'static, T, usize>);

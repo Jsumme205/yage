@@ -118,6 +118,20 @@ where
             Some(L::from_raw(head))
         }
     }
+
+    pub fn for_each<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&L::Handle),
+    {
+        let mut next = self.head;
+        while let Some(curr) = next {
+            unsafe {
+                let handle = ManuallyDrop::new(L::from_raw(curr));
+                f(&handle);
+                next = L::pointers(curr).as_ref().get_next();
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,4 +1,8 @@
-use core::{cell::UnsafeCell, marker::PhantomData};
+use core::{
+    cell::UnsafeCell,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 
 mod borrow;
 
@@ -28,6 +32,20 @@ impl<T> Atomic<T> {
 
 impl<T: ?Sized> Atomic<T> {
     pub fn borrow_mut(&self) -> AtomicMut<'_, T> {
+        todo!()
+    }
+}
+
+impl<'a, T: ?Sized> Deref for AtomicMut<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        todo!()
+    }
+}
+
+impl<'a, T: ?Sized> DerefMut for AtomicMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         todo!()
     }
 }

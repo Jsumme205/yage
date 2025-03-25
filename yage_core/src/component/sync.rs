@@ -10,6 +10,15 @@ pub struct AsyncRenderContext<'borrow, 'ctx, S> {
     render_context: &'borrow mut RenderContext<S>,
 }
 
+impl<'borrow, 'ctx, S> AsyncRenderContext<'borrow, 'ctx, S> {
+    pub(crate) fn new(cx: &'borrow mut Context<'ctx>, ctx: &'borrow mut RenderContext<S>) -> Self {
+        Self {
+            cx,
+            render_context: ctx,
+        }
+    }
+}
+
 impl<'borrow, 'ctx, S> core::ops::Deref for AsyncRenderContext<'borrow, 'ctx, S> {
     type Target = RenderContext<S>;
 
@@ -107,17 +116,29 @@ where
 
 impl<C> AsyncComponentExt for C where C: AsyncComponent + Unpin {}
 
-pub trait AsyncDynamicComponent: AsyncComponent {
+pub trait AsyncDynamicComponent: BaseComponent {
+    type State;
+
+    fn poll_draw(
+        self: Pin<&mut Self>,
+        ctx: &mut AsyncRenderContext<'_, '_, Self::State>,
+    ) -> Poll<crate::Result<()>>;
+
+    fn poll_derender(
+        self: Pin<&mut Self>,
+        ctx: &mut AsyncRenderContext<'_, '_, Self::State>,
+    ) -> Poll<crate::Result<()>>;
+
     fn poll_update(
         self: Pin<&mut Self>,
-        render_context: &mut AsyncRenderContext<'_, '_, <Self as AsyncComponent>::State>,
+        render_context: &mut AsyncRenderContext<'_, '_, Self::State>,
     ) -> Poll<crate::Result<()>>;
 }
 
 pub trait AsyncDynamicComponentExt: AsyncDynamicComponent + Unpin {
     fn update<'a>(
         &'a mut self,
-        ctx: &'a mut RenderContext<<Self as AsyncComponent>::State>,
+        ctx: &'a mut RenderContext<<Self as AsyncDynamicComponent>::State>,
     ) -> Update<'a, Self> {
         Update::new(self, ctx)
     }

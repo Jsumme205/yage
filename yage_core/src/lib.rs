@@ -74,6 +74,7 @@ impl<S> EngineBuilder<S> {
             state: self.state,
             executor: Executor,
             assets: Assets,
+            components: ComponentList::new(),
         })
     }
 }
