@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-simeng_sys = { path = "/home/jack/Documents/yage/yage_sys" }
-simeng_task = { path = "/home/jack/Documents/yage/yage_task" }
-simeng_executor = { path = "/home/jack/Documents/yage/yage_executor" }
+yage_sys = { path = "/home/jack/Documents/yage/yage_sys" }
+yage_task = { path = "/home/jack/Documents/yage/yage_task" }
+yage_executor = { path = "/home/jack/Documents/yage/yage_executor" }
+yage_system = { path = "../yage_system" }
+yage_core = { path = "../yage_core" }
 flume = "0.11.1"

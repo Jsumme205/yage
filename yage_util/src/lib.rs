@@ -7,4 +7,6 @@ extern crate alloc;
 extern crate std as alloc;
 
 pub mod atomic;
+pub mod container_trait;
 pub mod list;
+pub mod testing;

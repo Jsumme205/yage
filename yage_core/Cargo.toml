@@ -10,8 +10,3 @@ yage_executor = { path = "/home/jack/Documents/yage/yage_executor" }
 
 
 [features]
-std = []
-default = ["std"]
-async_support = []
-default_listeners = []
-unstable = []

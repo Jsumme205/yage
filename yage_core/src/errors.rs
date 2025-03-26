@@ -1,9 +1,6 @@
-use core::fmt::{self, Pointer};
+use std::fmt;
 
-#[cfg(feature = "std")]
-use alloc::io;
-#[cfg(feature = "std")]
-use alloc::io::ErrorKind as IoErrorKind;
+use std::io::{self, ErrorKind as IoErrorKind};
 use yage_sys::error::ErrorKind as SysErrorKind;
 use yage_sys::error::GlfwError;
 
@@ -27,7 +24,6 @@ impl From<GlfwError> for Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Self {
@@ -39,7 +35,7 @@ impl From<io::Error> for Error {
 
 pub struct Error {
     kind: ErrorKind,
-    details: Option<alloc::boxed::Box<dyn core::convert::AsRef<str>>>,
+    details: Option<Box<dyn core::convert::AsRef<str>>>,
 }
 
 impl Error {

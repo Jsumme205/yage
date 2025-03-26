@@ -1,13 +1,44 @@
 use std::ffi::CString;
+use std::ptr::NonNull;
 
-use simeng_sys::{
+use yage_core::allocator_api::Allocator;
+use yage_sys::{
     shader::{FragmentShader, ShaderLoader, VertexShader},
     window::RawWindowParams,
 };
+use yage_system::Player;
+
+/// extremely unsafe, only used to test conditions
+struct StdAlloc;
+
+unsafe impl Allocator for StdAlloc {
+    type Error = ();
+
+    fn allocate(
+        &mut self,
+        layout: std::alloc::Layout,
+    ) -> Result<std::ptr::NonNull<u8>, Self::Error> {
+        unsafe { Ok(NonNull::new_unchecked(std::alloc::alloc(layout))) }
+    }
+
+    fn deallocate(&mut self, ptr: *mut u8, layout: std::alloc::Layout) -> Result<(), Self::Error> {
+        unsafe { std::alloc::dealloc(ptr, layout) };
+        Ok(())
+    }
+
+    fn reallocate(
+        &mut self,
+        old_ptr: *mut u8,
+        old_layout: std::alloc::Layout,
+        new_layout: std::alloc::Layout,
+    ) -> Result<NonNull<u8>, Self::Error> {
+        Err(())
+    }
+}
 
 fn main() {
-    simeng_sys::glfw_init().unwrap();
-    simeng_sys::register_error_callback(simeng_sys::DefaultErrorCallback);
+    yage_sys::glfw_init().unwrap();
+    yage_sys::register_error_callback(yage_sys::DefaultErrorCallback);
 
     /*
     let mut vertex_shader: ShaderLoader<6, VertexShader> =
@@ -28,7 +59,7 @@ fn main() {
 
     */
 
-    let mut window = simeng_sys::window::RawWindow::create(RawWindowParams {
+    let mut window = yage_sys::window::RawWindow::create(RawWindowParams {
         width: 200,
         height: 200,
         name: Some(CString::new("test").unwrap()),
@@ -41,26 +72,9 @@ fn main() {
 
     //let _ = unsafe { window.main_loop(|_| Ok(())) };
 
-    use simeng_task::builder::Builder;
-
-    let (sender, recv) = flume::unbounded();
-
-    let schedule = move |task| sender.send(task).unwrap();
-
-    let (task, handle) =
-        simeng_task::builder::Builder::new().spawn(move |()| async move { 1 + 2 }, schedule);
-    dbg!(task.state());
-    task.schedule();
-
-    let task = recv.recv().unwrap();
-
-    dbg!(task.state());
-
-    let waker = task.waker();
-    let mut cx = core::task::Context::from_waker(&waker);
-    task.run(&mut cx);
-
     //println!("{:?}", handle.join());
+
+    let player = Player::allocate(2, &mut StdAlloc).unwrap();
 
     println!("Hello, world!");
 }
