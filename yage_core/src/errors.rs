@@ -10,6 +10,8 @@ pub enum ErrorKind {
     System(SysErrorKind),
     IoError(IoErrorKind),
     ComponentDrawError,
+    PushError,
+    GetError,
     DisabledRt,
     #[default]
     Other,

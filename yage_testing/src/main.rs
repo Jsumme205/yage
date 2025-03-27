@@ -6,7 +6,6 @@ use yage_sys::{
     shader::{FragmentShader, ShaderLoader, VertexShader},
     window::RawWindowParams,
 };
-use yage_system::Player;
 
 /// extremely unsafe, only used to test conditions
 struct StdAlloc;
@@ -73,8 +72,6 @@ fn main() {
     //let _ = unsafe { window.main_loop(|_| Ok(())) };
 
     //println!("{:?}", handle.join());
-
-    let player = Player::allocate(2, &mut StdAlloc).unwrap();
 
     println!("Hello, world!");
 }

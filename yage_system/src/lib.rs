@@ -10,7 +10,12 @@ pub mod utility_structs;
 pub trait System<In> {
     type Collection: Container<In>;
 
-    fn run_system(&mut self, collection: &mut Self::Collection);
+    /// this is meant to run in bulk, for potential optimizations. by default this is already implemented though
+    fn run_system(&mut self, collection: &mut Self::Collection) {
+        self.consume_iter(collection.mutable_iterator());
+    }
+
+    fn consume_iter(&mut self, iter: <Self::Collection as Container<In>>::Mutable<'_>);
 }
 
 pub trait FailableSystem<In> {
@@ -32,6 +37,18 @@ where
     }
 }
 
+/// Reflexive trait for `System`
+/// every container that is used by a system implements this
+pub trait RunSystem<In>: Container<In> {
+    fn run<S>(&mut self, system: &mut S)
+    where
+        S: System<In, Collection = Self>,
+    {
+        system.run_system(self);
+    }
+}
+impl<C, In> RunSystem<In> for C where C: Container<In> {}
+
 /// field layout:
 /// entities
 /// ========
@@ -45,88 +62,231 @@ where
 
 macro_rules! component_data {
     (
-        $vis:vis struct $name:ident  $(<$($gen:tt),*>)? {
-            $($field_name:ident :  $field_ty:ty),* $(,)?
+        $vis:vis struct $Name:ident  $(<$($gen:tt),*>)? {
+            $($field_name:ident -> $FieldTy:ty),* $(,)?
         }
 
     ) => {
-        $vis struct $name $(<$($gen),*>)? {
-
-            header: $crate::utility_structs::Header,
-            entities: *mut $crate::utility_structs::Entity,
-            $($field_name: *mut $field_ty),*,
-            _pin: core::marker::PhantomPinned
-        }
+        //$vis struct $name $(<$($gen),*>)?
 
         ::paste::paste! {
-            #[derive(Clone, Copy, Debug)]
-            struct [<$name Layout>] {
-                $([<$field_name _offset>]: usize),*
+            #[repr(C)]
+            $vis struct $Name $(<$($gen),*>)? {
+                header: $crate::utility_structs::Header<[<$Name Layout>]>,
+                entities: $crate::utility_structs::ThinSlice<$crate::utility_structs::Entity>,
+                $($field_name: $crate::utility_structs::ThinSlice<$FieldTy>),*
+            }
+
+            $vis struct [<$Name Instance>] $(<$($gen),*>)? {
+                $($field_name: $FieldTy),*
+            }
+
+            $vis struct [<$Name Ref>] <'__ref, $(($gen),*)?> {
+                $($field_name: &'__ref $FieldTy),*
+            }
+
+            $vis struct [<$Name Mut>] <'__ref, $(($gen),*)?> {
+                $($field_name: &'__ref mut $FieldTy),*
+            }
+
+            component_data!(@@@impl_represents: &'a [<$Name Instance>], [<$Name Ref>]<'a, $($($gen),*)?>);
+            component_data!(@@@impl_represents: &'a mut [<$Name Instance>], [<$Name Mut>]<'a, $($($gen),*)?>);
+
+            #[derive(Copy, Clone)]
+            struct [<$Name Layout>] {
+                align: usize,
+                size: usize,
+                $([<$field_name _offset>]: usize),*,
+            }
+
+            impl $crate::utility_structs::GetLayout for [<$Name Layout>] {
+                fn layout(&self) -> ::core::alloc::Layout {
+                       unsafe { ::core::alloc::Layout::from_size_align_unchecked(self.size, self.align) }
+                }
+            }
+
+            $vis struct [<$Name Iter>] <'__ref, $($($gen),*)?> {
+                inner: &'__ref $Name $(<$($gen),*>)?,
+                idx: u32,
+                _marker: ::core::marker::PhantomData<&'__ref [[<$Name Instance>]]>
+            }
+
+            impl<'__ref, $($($gen),*)?> Iterator for [<$Name Iter>]<'__ref, $($($gen),*)?> {
+                type Item = [<$Name Ref>]<'__ref, $($($gen),*)?>;
+
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    todo!()
+                }
+            }
+
+            impl<'__ref, $($($gen),*)?> Iterator for [<$Name IterMut>]<'__ref, $($($gen),*)?> {
+                type Item = [<$Name Mut>]<'__ref, $($($gen),*)?>;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    todo!()
+                }
+            }
+
+            $vis struct [<$Name IterMut>] <'__ref, $($($gen),*)?> {
+                inner: &'__ref mut $Name $(<$($gen),*>)?,
+                idx: u32,
+                _marker: ::core::marker::PhantomData<&'__ref mut [[<$Name Instance>]]>
             }
         }
 
+
+        // the core implementation, does all the heavy lifting
         ::paste::paste! {
-            #[derive(Clone, Copy)]
-            $vis struct [<$name Ref>] <'a, $(($gen),*)?> {
-                entity: &'a $crate::utility_structs::Entity,
-                $($field_name: &'a $field_ty),*
-            }
-        }
 
+            impl [<$Name Layout>] {
 
-        impl $(<$($gen),*>)?  $name $(<$($gen),*>)? {
+                const fn size_padded_to_align<T>(number: usize) -> usize {
+                    const ALIGN: usize = ::core::mem::align_of::<[<$Name Instance>]>();
 
-            #[inline(always)]
-            pub(crate) const fn largest_align() -> usize {
-                ::core::mem::align_of::<Self>()
-            }
+                    unsafe {
+                        ::core::alloc::Layout::from_size_align_unchecked(::core::mem::size_of::<T>() * number, ALIGN)
+                        .pad_to_align()
+                        .size()
+                    }
+                }
 
-            ::paste::paste! {
-                fn eval_this_layout(number: u32) -> ([<$name Layout>], usize) {
-                    let mut total_offset = 0;
-                    let mut layout: [<$name Layout>] = unsafe {::core::mem::zeroed()};
+                const fn eval_this_layout(number: u32) -> Self {
+                    let number = number as usize;
+                    let align = ::core::mem::align_of::<[<$Name Instance>]>();
+                    let entity_size = Self::size_padded_to_align::<$crate::utility_structs::Entity>(number);
                     $(
-                        let offset = core::mem::size_of::<$field_ty>() * (number as usize);
-                        layout.[<$field_name _offset>] = total_offset;
-                        total_offset += offset;
+                        let [<$field_name _size>] = Self::size_padded_to_align::<$FieldTy>(number);
                     )*
-                    (layout, total_offset)
+
+                    let mut layout = unsafe { ::core::mem::zeroed::<[<$Name Layout>]>() };
+                    let mut offset = entity_size;
+                    layout.align = align;
+
+                    $(
+                        component_data!(@@@write_layout: layout.[<$field_name _offset>], [<$field_name _size>], offset);
+                    )*
+
+                    layout.size = offset;
+                    layout
+                }
+
+
+            }
+
+            impl $(<$($gen),*>)? $Name $(<$($gen),*>)? {
+
+                $vis fn allocate<A>(number: u32, allocator: &mut A) -> Result<Self, A::Error>
+                where
+                    A: ::yage_core::allocator_api::Allocator
+                {
+
+                    let layout: &'static [<$Name Layout>] =
+                        ::std::boxed::Box::leak(
+                            ::std::boxed::Box::new(
+                                [<$Name Layout>]::eval_this_layout(number)
+                            )
+                        );
+                    let header = $crate::utility_structs::Header::new(false, number, layout);
+                    Self::__allocate_inner(allocator, header)
+                }
+
+                $vis fn allocate_array_layout<A, const N: usize>(allocator: &mut A) -> Result<Self, A::Error>
+                where
+                    A: ::yage_core::allocator_api::Allocator
+                {
+                    let header = $crate::utility_structs::Header::new(
+                        true,
+                        N as _,
+                        const {&[<$Name Layout>]::eval_this_layout(N as _)}
+                    );
+                    Self::__allocate_inner(allocator, header)
+                }
+
+                fn __allocate_inner<A>(
+                    allocator: &mut A,
+                    header: $crate::utility_structs::Header<[<$Name Layout>]>
+                ) -> Result<Self, A::Error>
+                where
+                    A: ::yage_core::allocator_api::Allocator,
+                {
+
+                    let ptr = allocator.allocate(header.layout())?;
+                    let raw = ptr.as_ptr();
+                    let layout = header.layout;
+                    let this = unsafe {
+                        Self {
+                            header,
+                            entities: $crate::utility_structs::ThinSlice::from_raw(raw.cast()),
+                            $($field_name: component_data!(@@@thin_slice: raw, layout.[<$field_name _offset>])),*
+                        }
+                    };
+                    Ok(this)
+                }
+
+                $vis const fn push(&mut self, item: [<$Name Instance>]) -> ::yage_core::Result<$crate::utility_structs::Entity> {
+                    if self.header.is_full() {
+                        return Err(::yage_core::errors::Error::new(
+                            ::yage_core::ErrorKind::PushError
+                        ));
+                    }
+
+                    let [<$Name Instance>] {
+                        $($field_name),*
+                    } = item;
+
+                    unsafe {
+                        let len = self.header.len() as usize;
+                        let align = self.header.raw_layout().align;
+                        $(
+                            component_data!(@@@write_ptr: self.$field_name.as_mut_ptr(), len, align, $field_name);
+                        )*
+
+                        self.header.set_len((len + 1) as _);
+                    }
+                    Ok($crate::utility_structs::Entity::DUMMY)
                 }
             }
 
-            pub fn allocate<A>(number: u32, allocator: &mut A) -> Result<Self, A::Error>
-            where
-                A: ::yage_core::allocator_api::Allocator
-            {
-                let (layout, actual_mem_size) = std::dbg!(Self::eval_this_layout(number));
-                //let _ptr = //::yage_core::allocator_api::Allocator::allocate(
-                    //allocator,
-                    //unsafe {::std::alloc::Layout::from_size_align_unchecked(Self::largest_align(), actual_mem_size)}
-               // )?;
+            impl $(<$($gen),*>)? ::yage_util::container_trait::Container<[<$Name Instance>]> for $Name {
+                type Iterator<'a> = [<$Name Iter>]<'a, $($($gen),*)?>;
+                type Mutable<'a> = [<$Name IterMut>]<'a, $($($gen),*)?>;
 
-                Ok(Self::dangling())
-            }
+                fn iterator(&self) -> Self::Iterator<'_> {
+                    [<$Name Iter>] {
+                        inner: self,
+                        idx: 0,
+                        _marker: Default::default(),
+                    }
+                }
 
-            pub(crate) const fn dangling() -> Self {
-                Self {
-                    header: $crate::utility_structs::Header::DANGLING,
-                    entities: core::ptr::null_mut(),
-                    $($field_name: core::ptr::null_mut()),*,
-                    _pin: core::marker::PhantomPinned,
+                fn mutable_iterator(&mut self) -> Self::Mutable<'_> {
+                    [<$Name IterMut>] {
+                        inner: self,
+                        idx: 0,
+                        _marker: Default::default(),
+                    }
                 }
             }
         }
-
-
-
     };
-}
 
-component_data! {
-    pub struct Player {
-        id: u32,
-        name: &'static str,
+    // internal macros, do not use!
+    (@@@write_layout: $place:expr, $val:expr, $off:expr) => {
+        $place = $off;
+        $off += $val;
+    };
+    (@@@impl_represents: $ty:ty, $impl_ref:ty) => {
+        impl<'a> ::yage_util::container_trait::Represents<$ty> for $impl_ref {}
+    };
+    (@@@write_ptr: $place:expr, $len:expr, $align:expr, $val:expr) => {{
+        let ptr = $place.byte_add($len * $align);
+        ptr.write_unaligned($val);
+    }};
+    (@@@thin_slice: $raw:expr, $offset:expr) => {
+        $crate::utility_structs::ThinSlice::from_raw($raw.add($offset).cast())
     }
+
 }
 
 #[cfg(test)]
@@ -135,10 +295,11 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_correct_align() {
-        assert!(Player::largest_align() == 0x8);
-        assert!(Player::largest_align().is_power_of_two())
+    component_data! {
+        pub struct Player {
+            name -> &'static str,
+            id -> i32,
+        }
     }
 
     #[test]
