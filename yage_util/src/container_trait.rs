@@ -21,6 +21,18 @@ impl<'a, T> Represents<&'a T> for AtomicRef<'a, T> {}
 impl<'a, T> Represents<&'a mut T> for AtomicMut<'a, T> {}
 impl<'a, T> Represents<&'a T> for AtomicMut<'a, T> {}
 
+macro_rules! impl_for_tuples {
+    ($($ty:tt)*) => {
+        impl<'a, $($ty),*> Represents<&'a ($($ty),*)> for ($(&'a $ty),*) {}
+    };
+}
+
+impl_for_tuples!(A B);
+impl_for_tuples!(A B C);
+impl_for_tuples!(A B C D);
+impl_for_tuples!(A B C D E);
+impl_for_tuples!(A B C D E F);
+
 /// a generic container type
 /// this allows a generic container access for the `System` trait
 pub trait Container<Item> {

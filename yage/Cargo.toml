@@ -1,0 +1,10 @@
+[package]
+name = "yage"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+yage_core = { path = "../yage_core" }
+yage_executor = { path = "../yage_executor" }
+yage_system = { path = "../yage_system" }
+yage_util = { path = "../yage_util" }

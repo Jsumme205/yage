@@ -1,5 +1,3 @@
-use small_vec::SmallVec;
-
 use crate::{gl_bindings::glUseProgram, window::RawWindow};
 use core::{convert::AsRef, marker::PhantomData};
 
@@ -51,13 +49,13 @@ pub trait SupportedVectorCount: sealed::Sealed {}
 pub enum VectorCount<const N: usize> {}
 
 struct Atrributes<const N: usize> {
-    inner: SmallVec<[f32; N]>,
+    inner: alloc::vec::Vec<[f32; N]>,
 }
 
 impl<const N: usize> Atrributes<N> {
     pub const fn new() -> Self {
         Self {
-            inner: SmallVec::new(),
+            inner: alloc::vec::Vec::new(),
         }
     }
 
@@ -114,7 +112,7 @@ impl<const N: usize> Atrributes<N> {
 }
 
 pub struct ShaderLoader<const N: usize, K: ProgramMarker> {
-    source: SmallVec<u8>,
+    source: alloc::vec::Vec<u8>,
     attributes: Atrributes<N>,
     _ph: PhantomData<K>,
 }
@@ -132,7 +130,7 @@ where
 
         let mut file = std::fs::File::open(path)?;
         let size = file.metadata()?.len();
-        let mut small = SmallVec::with_capacity(size as _);
+        let mut small = alloc::vec::Vec::with_capacity(size as _);
         file.read_exact(&mut small)?;
         Ok(Self {
             source: small,
@@ -141,7 +139,7 @@ where
         })
     }
 
-    pub fn from_raw_source(bytes: SmallVec<u8>) -> Self {
+    pub fn from_raw_source(bytes: alloc::vec::Vec<u8>) -> Self {
         Self {
             source: bytes,
             attributes: Atrributes::new(),

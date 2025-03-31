@@ -69,7 +69,7 @@ fn main() {
     //v_compiled.use_shader(&window);
     //f_compiled.use_shader(&window);
 
-    //let _ = unsafe { window.main_loop(|_| Ok(())) };
+    let _ = unsafe { window.main_loop(|_| Ok(())) };
 
     //println!("{:?}", handle.join());
 

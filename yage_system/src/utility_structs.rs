@@ -1,18 +1,15 @@
-use std::{alloc::Layout, marker::PhantomData, ptr::NonNull};
+use std::{
+    alloc::Layout,
+    cell::Cell,
+    marker::PhantomData,
+    ptr::NonNull,
+    sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering},
+    u32,
+    u64::MAX,
+};
 use yage_util::container_trait::Container;
 
 use crate::System;
-
-#[repr(transparent)]
-pub struct PhantomUnsized {
-    _marker: [()],
-}
-
-impl PhantomUnsized {
-    fn new<'a>() -> &'a Self {
-        unsafe { core::mem::transmute([()].as_slice()) }
-    }
-}
 
 pub struct Vec3(pub f32, pub f32, pub f32);
 
@@ -46,11 +43,31 @@ impl Vec3 {
 }
 
 pub struct Entity {
-    pub(crate) id: u32,
+    // layout:
+    // bits 0..31: id (index)
+    // bits 32..62: reference count
+    // bit 63: 0 if used, 1 if null
+    pub(crate) id: NonNull<AtomicU64>,
 }
 
 impl Entity {
-    pub const DUMMY: Self = Self { id: 0 };
+    const NULL_MASK: u64 = 1 << (u64::BITS - 1);
+
+    pub fn set_null(&self) {
+        unsafe {
+            self.id
+                .as_ref()
+                .fetch_or(Self::NULL_MASK, Ordering::Relaxed);
+        }
+    }
+
+    pub fn set_occupied(&self) {
+        unsafe {
+            self.id
+                .as_ref()
+                .fetch_and(!Self::NULL_MASK, Ordering::Relaxed);
+        }
+    }
 }
 
 pub struct Header<Layout: GetLayout> {
@@ -112,6 +129,15 @@ impl<L: GetLayout> Header<L> {
     }
 }
 
+impl<Layout: GetLayout> Drop for Header<Layout> {
+    fn drop(&mut self) {
+        if !self.is_constant() {
+            // if we did leak, we should drop it
+            drop(unsafe { Box::from_raw(self.layout as *const _ as *mut Layout) });
+        }
+    }
+}
+
 /// slice where the length is stored elsewhere
 pub struct ThinSlice<T> {
     pub(crate) ptr: NonNull<T>,
@@ -143,6 +169,14 @@ impl<T> ThinSlice<T> {
 
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         self.ptr.as_ptr()
+    }
+
+    pub const unsafe fn get(&self, idx: usize) -> &T {
+        unsafe { self.ptr.add(idx).as_ref() }
+    }
+
+    pub const unsafe fn get_mut(&mut self, idx: usize) -> &mut T {
+        unsafe { self.ptr.add(idx).as_mut() }
     }
 }
 

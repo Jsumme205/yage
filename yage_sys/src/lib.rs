@@ -12,7 +12,7 @@ use shader::CompiledShaders;
 extern crate alloc;
 
 #[cfg(feature = "std")]
-use std::alloc as allocator;
+extern crate std as alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::alloc as allocator;
@@ -39,10 +39,10 @@ pub mod raw;
 /// shader implementations
 pub mod shader;
 
-/// basic windowing utilities 
+/// basic windowing utilities
 pub mod window;
 
-/// registers an error callback 
+/// registers an error callback
 /// this callback implements the trait `ErrorCallback`, which provides a method
 /// `
 pub fn register_error_callback<T>(cb: T)
@@ -59,7 +59,6 @@ pub fn check_for_errors() {
     let mut ptr: *const i8 = core::ptr::null();
     let error_code = unsafe { glfw_bindings::glfwGetError(&raw mut ptr) };
 }
-
 
 /// initialize the glfw instance on the current thread
 /// this must be called before a `RawWindow` is created
@@ -98,7 +97,7 @@ unsafe extern "C" fn __detail_error_callback(code: i32, msg: *const i8) {
 }
 
 /// the main Error trait.
-/// this gets called whenever `glfw` realizes that it screwed up 
+/// this gets called whenever `glfw` realizes that it screwed up
 pub trait ErrorCallback: Send + Sync {
     fn on_error(&self, code: i32, message: &core::ffi::CStr);
 }
@@ -124,19 +123,19 @@ impl Drop for Err {
     fn drop(&mut self) {
         unsafe {
             (self.vtable.drop)(self.data.as_ptr());
-            allocator::dealloc(self.data.as_ptr() as *mut u8, self.vtable.layout.layout());
+            alloc::alloc::dealloc(self.data.as_ptr() as *mut u8, self.vtable.layout.layout());
         }
     }
 }
 
-/// main function to create an `Err` struct. 
+/// main function to create an `Err` struct.
 /// this takes data and creates a vtable based on it.
 fn vtable_for<T>(error: T) -> Option<Err>
 where
     T: ErrorCallback,
 {
     let ptr = unsafe {
-        let p = allocator::alloc(Layout::new::<T>()) as *mut T;
+        let p = alloc::alloc::alloc(Layout::new::<T>()) as *mut T;
         p.write(error);
         p
     };

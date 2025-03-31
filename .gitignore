@@ -1,4 +1,5 @@
 **/target/
 secrets.txt
+conditioning.txt
 
 *.lock
