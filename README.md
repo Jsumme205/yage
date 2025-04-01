@@ -1,90 +1,20 @@
 # YAGE
 Yet Another Game Engine
 
-This game engine is slightly based off of `javax.swing` API's, in the sense that there are event/listener models
+This game engine is attempting to be a more data-oriented design.
 
 for example,
 
-one could write:
+one could write (simplified):
 ```rust
-use yage_core::{Engine, EngineBuilder, component::{sync::{AsyncComponent, AsyncDynamicComponent}, RenderContext}};
-use yage_components::mesh::Mesh2D;
-use yage_net::TcpStream;
 
-use core::pin::Pin;
-use core::task::{Context, Poll};
+use yage::prelude::*;
 
-#[derive(Status)]
-enum PlayerStatus {
-  Healing,
-  Killed,
-  Fighting,
-  Chilling,
+struct Game {
+  core: EngineCore,
+  player_system: PlayerManager,
+  enemy_system: EnemyManager,
 }
 
-struct GameState {
-  player_health: usize,
-  player_status: PlayerStatus,
-  game_stream: TcpStream,
-}
-
-// the `yage::component` tag provides a set of listeners, a builder, and other utilities
-// TODO: other utilities?
-#[yage::component]
-struct PlayerComponent {
-  weapon: Weapon,
-  dimensions: Dimensions,
-  player_mesh: Mesh2D,
-}
-
-impl AsyncComponent for PlayerComponent {
-    type State = GameState;
-
-
-  fn poll_draw(self: Pin<&mut Self>, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<crate::Result<()>> {
-      self.weapon.poll_draw(cx)?;
-      self.player_mesh.poll_draw(cx)?;
-      Ok(())
-  }
-}
-
-impl AsyncDynamicComponent for PlayerComponent {
-  fn poll_update(self: Pin<&mut Self, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<crate::Result<()>> {
-    // update logic here, read stream for networking updates, etc
-    let mut stream = render_context.state().game_stream;
-    let mut buf = SmallVec::with_capacity(core::mem::size_of<usize>());
-    let mut buf = ReadBuf::new(&mut *buf);
-    match core::task::ready!(Pin::new(&mut *stream).poll_read(cx, buf) {
-      Ok(()) => {},
-      Err(e) => return Err(())
-    }
-    // other logic, etc...
-  }
-}
-
-
-fn main() {
-  let mut engine = EngineBuilder::new()
-  .with_state(async |_| GameState {
-    player_health: 100,
-    player_status: PlayerStatus::Chilling,
-    game_stream: TcpStream::connect().await.unwrap()
-  })
-  .build()
-  .unwrap();
-
-  engine.spawn(|assets| {
-    PlayerComponent {
-      weapon: Weapon::Sword,
-      dimensions: Dimensions {
-        len: 200,
-        width: 200
-      },
-      player_mesh: Mesh2D::load(assets.file("player.png"))
-    }
-  }).unwrap();
-
-  engine.run().unwrap()
-}
 
 ```
