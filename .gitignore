@@ -6,10 +6,10 @@ yage_core/target
 yage_sys/target
 yage_util/target
 
-.cargo
-.git
-.upm
-.replit
+/.cargo
+/.git
+/.upm
+/.replit
 
 
 /target
