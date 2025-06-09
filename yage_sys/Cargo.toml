@@ -1,0 +1,17 @@
+[package]
+name = "yage_sys"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+storage_api = { path = "../storage_api" }
+libloading = { path = "../libloading" }
+yage_util = { path = "../yage_util" }
+spin = "0.9.8"
+scoped-tls = "1.0.1"
+
+[build-dependencies]
+bindgen = "*"
+#cc = "*"
+
+[features]

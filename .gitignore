@@ -1,1 +1,15 @@
+bimap/target
+libloading/target
+storage_api/target
+yage/target
+yage_core/target
+yage_sys/target
+yage_util/target
+
+.cargo
+.git
+.upm
+.replit
+
+
 /target
