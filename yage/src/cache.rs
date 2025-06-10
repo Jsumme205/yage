@@ -12,7 +12,7 @@ pub struct IdHashed<T> {
 }
 
 impl<T> IdHashed<T> {
-    pub const fn new(data: T) -> Self {
+    pub fn new(data: T) -> Self {
         static NEXT_ID: AtomicU32 = AtomicU32::new(1);
         let id = unsafe { NonZero::new_unchecked(NEXT_ID.fetch_add(1, Ordering::Relaxed)) };
         Self { id, data }
@@ -39,7 +39,7 @@ impl Cache<NonZero<usize>> for AssetCache {
     fn clone_entry(
         &self,
         index: &NonZero<usize>,
-        token: yage_core::machine_cog::sealed::OnlyCalledByThisCrate,
+        token: yage_core::machine_cog::OnlyCalledByThisCrate,
     ) -> NonZero<usize> {
         todo!()
     }

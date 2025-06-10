@@ -24,30 +24,29 @@ pub struct Init<I> {
 
 crate::seal!(Init<N>);
 
-impl<I, S, M, E> Cog<(M, S)> for Init<I>
+impl<I, S, M, E, Eq, R> Cog<(M, S, Eq, R)> for Init<I>
 where
-    I: for<'a> Plugin<&'a mut InitContext, Output = (M, S), Error = E>,
+    I: for<'a> Plugin<&'a mut InitContext, Output = (M, S, Eq), Error = E>,
 {
     type Input = ();
     type Error = E;
-    type Output<N: TupleHelper> = MainLoop<N::E1, N::E2>;
+    type Output<N: TupleHelper> = MainLoop<N::E1, N::E2, N::E3, N::E4>;
 
     fn poll_transform(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         _: &mut MachineInput<'_, Self::Input>,
-        _: crate::machine_cog::sealed::OnlyCalledByThisCrate,
-    ) -> Poll<Result<Self::Output<(M, S)>, Self::Error>> {
+        _: crate::machine_cog::OnlyCalledByThisCrate,
+    ) -> Poll<Result<Self::Output<(M, S, Eq, R)>, Self::Error>> {
         let Self {
             init_plugin,
             init_context,
             ..
         } = unsafe { self.get_unchecked_mut() };
         let init_plugin = unsafe { Pin::new_unchecked(init_plugin) };
-        let (main_loop, state) = core::task::ready!(init_plugin.poll_plugin(cx, init_context))?;
-        Ok(MainLoop {
-          main_loop,
-          state
-        }).into()
+        let (main_loop, state, event_queue) =
+            core::task::ready!(init_plugin.poll_plugin(cx, init_context))?;
+        Ok(MainLoop::new(main_loop, state, event_queue))
+        .into()
     }
 }

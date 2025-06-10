@@ -5,6 +5,7 @@ yage/target
 yage_core/target
 yage_sys/target
 yage_util/target
+/expanded.txt
 
 /.cargo
 /.git
